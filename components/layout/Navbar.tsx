@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useFragrance } from "@/context/FragranceContext";
 import { cn } from "@/lib/utils";
+import { AuthButton } from "@/components/auth/AuthButton";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -53,6 +54,7 @@ export function Navbar() {
                 )}
               </Link>
             ))}
+            <AuthButton />
           </div>
 
           {/* Mobile Menu Button */}
@@ -94,6 +96,9 @@ export function Navbar() {
                 )}
               </Link>
             ))}
+            <div className="border-t border-[#2a2a2a] pt-3">
+              <AuthButton />
+            </div>
           </div>
         </div>
       )}

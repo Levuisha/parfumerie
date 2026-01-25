@@ -26,6 +26,14 @@ A personal fragrance library and discovery platform built with Next.js 14, TypeS
 npm install
 ```
 
+## Supabase (dev wiring test)
+
+- Required env vars in `.env.local`:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- After changing `.env.local`, you must restart: `npm run dev`
+- Dev-only test page: `http://localhost:3000/dev/supabase-test`
+
 2. Run the development server:
 ```bash
 npm run dev

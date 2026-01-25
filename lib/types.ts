@@ -3,7 +3,7 @@ export interface Fragrance {
   name: string;
   brand: string;
   year: number;
-  gender: "Masculine" | "Feminine" | "Unisex";
+  gender: "Male" | "Female" | "Unisex";
   description: string;
   image: string;
   topNotes: string[];

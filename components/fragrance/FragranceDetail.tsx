@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { RatingDisplay } from "./RatingDisplay";
 import { NotesPyramid } from "./NotesPyramid";
@@ -21,8 +20,9 @@ interface FragranceDetailProps {
 export function FragranceDetail({ fragrance }: FragranceDetailProps) {
   const { setRating, setReview, userRatings, userReviews } = useFragrance();
   const [rating, setRatingLocal] = useState<number>(
-    userRatings.get(fragrance.id) ?? 5
+    userRatings.get(fragrance.id) ?? 0
   );
+  const [hoveredStar, setHoveredStar] = useState(0);
   const [review, setReviewLocal] = useState<string>(
     userReviews.get(fragrance.id) ?? ""
   );
@@ -30,14 +30,22 @@ export function FragranceDetail({ fragrance }: FragranceDetailProps) {
   useEffect(() => {
     const savedRating = userRatings.get(fragrance.id);
     const savedReview = userReviews.get(fragrance.id);
-    if (savedRating !== undefined) setRatingLocal(savedRating);
+    if (savedRating !== undefined) {
+      setRatingLocal(savedRating);
+    } else {
+      setRatingLocal(0);
+    }
     if (savedReview) setReviewLocal(savedReview);
   }, [fragrance.id, userRatings, userReviews]);
 
-  const handleRatingChange = (value: number[]) => {
-    const newRating = value[0];
-    setRatingLocal(newRating);
-    setRating(fragrance.id, newRating);
+  const handleStarClick = (starNumber: number) => {
+    setRatingLocal(starNumber);
+    setRating(fragrance.id, starNumber);
+  };
+
+  const handleClearRating = () => {
+    setRatingLocal(0);
+    setRating(fragrance.id, null);
   };
 
   const handleReviewChange = (value: string) => {
@@ -123,24 +131,42 @@ export function FragranceDetail({ fragrance }: FragranceDetailProps) {
 
           {/* User Rating */}
           <div className="space-y-4 border-t border-[#2a2a2a] pt-6">
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label className="text-sm font-medium text-[#a0a0a0]">
-                  Your Rating
-                </label>
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-[#ff6b35] text-[#ff6b35]" />
-                  <span className="text-sm font-medium text-white">{rating}/10</span>
-                </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-orange-500 uppercase">
+                Your Rating
+              </label>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => {
+                  const isActive = star <= (hoveredStar || rating);
+
+                  return (
+                    <Star
+                      key={star}
+                      size={28}
+                      className={`cursor-pointer transition-all duration-150 ${
+                        isActive
+                          ? "fill-orange-500 stroke-orange-500"
+                          : "fill-none stroke-orange-500"
+                      } hover:scale-110`}
+                      onMouseEnter={() => setHoveredStar(star)}
+                      onMouseLeave={() => setHoveredStar(0)}
+                      onClick={() => handleStarClick(star)}
+                    />
+                  );
+                })}
+                <span className="ml-3 text-gray-400 text-sm">
+                  {rating > 0 ? `${rating}/10` : "Not rated yet"}
+                </span>
+                {rating > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearRating}
+                    className="ml-3 text-xs uppercase text-orange-500 hover:text-orange-400 transition-colors"
+                  >
+                    Clear rating
+                  </button>
+                )}
               </div>
-              <Slider
-                value={[rating]}
-                onValueChange={handleRatingChange}
-                min={1}
-                max={10}
-                step={1}
-                className="w-full"
-              />
             </div>
 
             <div>

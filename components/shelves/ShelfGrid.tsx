@@ -35,7 +35,7 @@ export function ShelfGrid({ shelf }: ShelfGridProps) {
     <FragranceGrid
       fragrances={fragrances}
       showUserRating={true}
-      onRemove={(id) => removeFromShelf(id)}
+      onRemove={(id) => removeFromShelf(String(id))}
     />
   );
 }

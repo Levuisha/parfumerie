@@ -14,19 +14,13 @@ export default function HomePage() {
     gender: [],
     season: [],
     timeOfDay: [],
-    notes: [],
+    brands: [],
   });
+  const [sortBy, setSortBy] = useState("most-popular");
   const [showFilters, setShowFilters] = useState(false);
 
-  // Get all unique notes from fragrances
-  const availableNotes = useMemo(() => {
-    const notesSet = new Set<string>();
-    fragrances.forEach((f) => {
-      f.topNotes.forEach((n) => notesSet.add(n));
-      f.middleNotes.forEach((n) => notesSet.add(n));
-      f.baseNotes.forEach((n) => notesSet.add(n));
-    });
-    return Array.from(notesSet).sort();
+  const availableBrands = useMemo(() => {
+    return [...new Set(fragrances.map((f) => f.brand))].sort();
   }, [fragrances]);
 
   // Filter fragrances
@@ -62,22 +56,32 @@ export default function HomePage() {
         if (!hasMatchingTime) return false;
       }
 
-      // Notes filter
-      if (filters.notes.length > 0) {
-        const allNotes = [
-          ...fragrance.topNotes,
-          ...fragrance.middleNotes,
-          ...fragrance.baseNotes,
-        ];
-        const hasMatchingNote = filters.notes.some((n) =>
-          allNotes.includes(n)
-        );
-        if (!hasMatchingNote) return false;
+      // Brands filter
+      if (filters.brands.length > 0 && !filters.brands.includes(fragrance.brand)) {
+        return false;
       }
 
       return true;
     });
   }, [fragrances, searchQuery, filters]);
+
+  const sortedFragrances = useMemo(() => {
+    if (sortBy === "most-popular") {
+      return filteredFragrances;
+    }
+
+    const sorted = [...filteredFragrances];
+    switch (sortBy) {
+      case "highest-rated":
+        return sorted.sort((a, b) => (b.userRating ?? b.longevity) - (a.userRating ?? a.longevity));
+      case "biggest-projection":
+        return sorted.sort((a, b) => b.sillage - a.sillage);
+      case "longest-lasting":
+        return sorted.sort((a, b) => b.longevity - a.longevity);
+      default:
+        return sorted;
+    }
+  }, [filteredFragrances, sortBy]);
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -86,7 +90,6 @@ export default function HomePage() {
           Browse Fragrances
           <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#ff6b35]"></span>
         </h1>
-        <p className="text-[#a0a0a0] mt-2">Discover and explore our collection</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
@@ -105,7 +108,9 @@ export default function HomePage() {
               <FilterSidebar
                 filters={filters}
                 onFilterChange={setFilters}
-                availableNotes={availableNotes}
+                availableBrands={availableBrands}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
               />
             </div>
           </div>
@@ -119,7 +124,7 @@ export default function HomePage() {
           <div className="mb-4 text-sm text-[#a0a0a0]">
             Showing {filteredFragrances.length} of {fragrances.length} fragrances
           </div>
-          <FragranceGrid fragrances={filteredFragrances} />
+          <FragranceGrid fragrances={sortedFragrances} />
         </div>
       </div>
     </div>

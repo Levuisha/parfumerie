@@ -3,18 +3,22 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Fragrance, ShelfType } from "@/lib/types";
 import { mockFragrances } from "@/lib/mockData";
+import { fetchShelfRows, setShelf, removeShelf } from "@/lib/shelves";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
 interface FragranceContextType {
   fragrances: Fragrance[];
   userRatings: Map<number, number>;
   userReviews: Map<number, string>;
-  shelves: Map<number, ShelfType>;
-  addToShelf: (id: number, shelf: "owned" | "want" | "tested") => void;
-  removeFromShelf: (id: number) => void;
+  shelves: Map<string, ShelfType>;
+  addToShelf: (id: string, shelf: "owned" | "want" | "tested") => Promise<void>;
+  removeFromShelf: (id: string) => Promise<void>;
   setRating: (id: number, rating: number | null) => void;
   setReview: (id: number, review: string) => void;
   getFragranceById: (id: number) => Fragrance | undefined;
   getFragrancesByShelf: (shelf: "owned" | "want" | "tested") => Fragrance[];
+  isAuthenticated: boolean;
+  authReady: boolean;
 }
 
 const FragranceContext = createContext<FragranceContextType | undefined>(undefined);
@@ -23,14 +27,15 @@ export function FragranceProvider({ children }: { children: ReactNode }) {
   const [fragrances, setFragrances] = useState<Fragrance[]>(mockFragrances);
   const [userRatings, setUserRatings] = useState<Map<number, number>>(new Map());
   const [userReviews, setUserReviews] = useState<Map<number, string>>(new Map());
-  const [shelves, setShelves] = useState<Map<number, ShelfType>>(new Map());
+  const [shelves, setShelves] = useState<Map<string, ShelfType>>(new Map());
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   // Load from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedRatings = localStorage.getItem("parfumerie_ratings");
       const savedReviews = localStorage.getItem("parfumerie_reviews");
-      const savedShelves = localStorage.getItem("parfumerie_shelves");
 
       if (savedRatings) {
         try {
@@ -50,15 +55,84 @@ export function FragranceProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (savedShelves) {
-        try {
-          const shelvesData = JSON.parse(savedShelves);
-          setShelves(new Map(Object.entries(shelvesData).map(([k, v]) => [Number(k), v as ShelfType])));
-        } catch (e) {
-          console.error("Error loading shelves:", e);
-        }
-      }
     }
+  }, []);
+
+  // Track auth session for shelves (Supabase-backed).
+  useEffect(() => {
+    const { supabase } = getSupabaseClient();
+    if (!supabase) {
+      setAuthUserId(null);
+      setAuthReady(true);
+      return;
+    }
+
+    let isMounted = true;
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (!isMounted) return;
+      setAuthUserId(data.user?.id ?? null);
+      setAuthReady(true);
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (_, session) => {
+        if (!isMounted) return;
+        setAuthUserId(session?.user?.id ?? null);
+        setAuthReady(true);
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      subscription.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Load shelves from Supabase when authenticated.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadShelves() {
+      if (!authReady) return;
+      if (!authUserId) {
+        setShelves(new Map());
+        return;
+      }
+
+      const rows = await fetchShelfRows();
+      if (cancelled) return;
+
+      const next = new Map<string, ShelfType>();
+      rows.forEach((row) => {
+        next.set(row.fragranceId, row.status);
+      });
+      setShelves(next);
+    }
+
+    loadShelves();
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, authUserId]);
+
+  // Temporary: clear local shelves on logout.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onLogout = () => {
+      try {
+        localStorage.removeItem("parfumerie_shelves");
+      } catch {
+        // ignore
+      }
+      setShelves(new Map());
+    };
+
+    window.addEventListener("parfumerie_logout", onLogout);
+    return () => {
+      window.removeEventListener("parfumerie_logout", onLogout);
+    };
   }, []);
 
   // Sync fragrances with user data
@@ -67,35 +141,43 @@ export function FragranceProvider({ children }: { children: ReactNode }) {
       prev.map((fragrance) => ({
         ...fragrance,
         userRating: userRatings.get(fragrance.id) ?? null,
-        shelf: shelves.get(fragrance.id) ?? null,
+        shelf: shelves.get(String(fragrance.id)) ?? null,
       }))
     );
   }, [userRatings, shelves]);
 
-  const addToShelf = (id: number, shelf: "owned" | "want" | "tested") => {
+  const addToShelf = async (id: string, shelf: "owned" | "want" | "tested") => {
+    if (!authUserId) {
+      return;
+    }
+
+    const result = await setShelf(id, shelf);
+    if (!result.ok) {
+      console.warn("[shelves] setShelf failed:", result.message);
+      return;
+    }
+
     setShelves((prev) => {
       const newShelves = new Map(prev);
       newShelves.set(id, shelf);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(
-          "parfumerie_shelves",
-          JSON.stringify(Object.fromEntries(newShelves))
-        );
-      }
       return newShelves;
     });
   };
 
-  const removeFromShelf = (id: number) => {
+  const removeFromShelf = async (id: string) => {
+    if (!authUserId) {
+      return;
+    }
+
+    const result = await removeShelf(id);
+    if (!result.ok) {
+      console.warn("[shelves] removeShelf failed:", result.message);
+      return;
+    }
+
     setShelves((prev) => {
       const newShelves = new Map(prev);
       newShelves.delete(id);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(
-          "parfumerie_shelves",
-          JSON.stringify(Object.fromEntries(newShelves))
-        );
-      }
       return newShelves;
     });
   };
@@ -157,6 +239,8 @@ export function FragranceProvider({ children }: { children: ReactNode }) {
         setReview,
         getFragranceById,
         getFragrancesByShelf,
+        isAuthenticated: Boolean(authUserId),
+        authReady,
       }}
     >
       {children}
