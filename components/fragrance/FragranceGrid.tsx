@@ -7,9 +7,15 @@ interface FragranceGridProps {
   fragrances: Fragrance[];
   showUserRating?: boolean;
   onRemove?: (id: number) => void;
+  detailQuery?: string;
 }
 
-export function FragranceGrid({ fragrances, showUserRating = false, onRemove }: FragranceGridProps) {
+export function FragranceGrid({
+  fragrances,
+  showUserRating = false,
+  onRemove,
+  detailQuery,
+}: FragranceGridProps) {
   if (fragrances.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -29,6 +35,7 @@ export function FragranceGrid({ fragrances, showUserRating = false, onRemove }: 
           fragrance={fragrance}
           showUserRating={showUserRating}
           onRemove={onRemove ? () => onRemove(fragrance.id) : undefined}
+          detailQuery={detailQuery}
         />
       ))}
     </div>

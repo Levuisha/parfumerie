@@ -1,42 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { RatingDisplay } from "./RatingDisplay";
 import { NotesPyramid } from "./NotesPyramid";
 import { ShelfActions } from "./ShelfActions";
 import { useFragrance } from "@/context/FragranceContext";
 import { Fragrance } from "@/lib/types";
 import { ArrowLeft, Star, Clock, Sparkles } from "lucide-react";
+import { MyReviewForm } from "@/components/reviews/MyReviewForm";
+import { ReviewsSection } from "@/components/reviews/ReviewsSection";
 
 interface FragranceDetailProps {
   fragrance: Fragrance;
 }
 
 export function FragranceDetail({ fragrance }: FragranceDetailProps) {
-  const { setRating, setReview, userRatings, userReviews } = useFragrance();
+  const { setRating, userRatings } = useFragrance();
+  const searchParams = useSearchParams();
+  const [reviewsRefresh, setReviewsRefresh] = useState(0);
   const [rating, setRatingLocal] = useState<number>(
     userRatings.get(fragrance.id) ?? 0
   );
   const [hoveredStar, setHoveredStar] = useState(0);
-  const [review, setReviewLocal] = useState<string>(
-    userReviews.get(fragrance.id) ?? ""
-  );
 
   useEffect(() => {
     const savedRating = userRatings.get(fragrance.id);
-    const savedReview = userReviews.get(fragrance.id);
     if (savedRating !== undefined) {
       setRatingLocal(savedRating);
     } else {
       setRatingLocal(0);
     }
-    if (savedReview) setReviewLocal(savedReview);
-  }, [fragrance.id, userRatings, userReviews]);
+  }, [fragrance.id, userRatings]);
 
   const handleStarClick = (starNumber: number) => {
     setRatingLocal(starNumber);
@@ -48,14 +47,18 @@ export function FragranceDetail({ fragrance }: FragranceDetailProps) {
     setRating(fragrance.id, null);
   };
 
-  const handleReviewChange = (value: string) => {
-    setReviewLocal(value);
-    setReview(fragrance.id, value);
+  const handleReviewsUpdated = () => {
+    setReviewsRefresh((prev) => prev + 1);
   };
+
+  const backHref = useMemo(() => {
+    const query = searchParams.toString();
+    return query ? `/?${query}` : "/";
+  }, [searchParams]);
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <Link href="/">
+      <Link href={backHref}>
         <Button variant="ghost" className="mb-6 hover:text-[#ff6b35]">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Browse
@@ -80,7 +83,9 @@ export function FragranceDetail({ fragrance }: FragranceDetailProps) {
           <div>
             <h1 className="text-3xl font-bold text-white">{fragrance.name}</h1>
             <p className="mt-1 text-xl text-[#ff6b35]">
-              {fragrance.brand} • {fragrance.year}
+              {fragrance.brand}
+              {fragrance.year ? ` • ${fragrance.year}` : ""}
+              {fragrance.concentration ? ` • ${fragrance.concentration}` : ""}
             </p>
           </div>
 
@@ -169,29 +174,36 @@ export function FragranceDetail({ fragrance }: FragranceDetailProps) {
               </div>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-[#a0a0a0]">
-                Your Review
-              </label>
-              <Textarea
-                value={review}
-                onChange={(e) => handleReviewChange(e.target.value)}
-                placeholder="Share your thoughts about this fragrance..."
-                className="min-h-[100px]"
-              />
-            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div className="mt-12 space-y-6">
+        <div>
+          <h2 className="mb-2 text-2xl font-bold text-white">Your Review</h2>
+          <MyReviewForm fragranceId={fragrance.id} onUpdated={handleReviewsUpdated} />
+        </div>
+        <div>
+          <h2 className="mb-2 text-2xl font-bold text-white">Public Reviews</h2>
+          <ReviewsSection fragranceId={fragrance.id} refreshToken={reviewsRefresh} />
         </div>
       </div>
 
       {/* Notes Section */}
       <div className="mt-12">
         <h2 className="mb-6 text-2xl font-bold text-white">Fragrance Notes</h2>
-        <NotesPyramid
-          topNotes={fragrance.topNotes}
-          middleNotes={fragrance.middleNotes}
-          baseNotes={fragrance.baseNotes}
-        />
+        {fragrance.topNotes.length > 0 ||
+        fragrance.middleNotes.length > 0 ||
+        fragrance.baseNotes.length > 0 ? (
+          <NotesPyramid
+            topNotes={fragrance.topNotes}
+            middleNotes={fragrance.middleNotes}
+            baseNotes={fragrance.baseNotes}
+          />
+        ) : (
+          <p className="text-sm text-[#a0a0a0]">Notes coming soon.</p>
+        )}
       </div>
     </div>
   );

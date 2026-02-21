@@ -34,6 +34,15 @@ npm install
 - After changing `.env.local`, you must restart: `npm run dev`
 - Dev-only test page: `http://localhost:3000/dev/supabase-test`
 
+## Supabase Auth Redirects (Password Reset)
+
+Configure Supabase Dashboard → Authentication → URL Configuration:
+- Redirect URLs:
+  - `http://localhost:3000/auth/reset`
+  - `http://localhost:3000/*`
+- Add your Vercel production URLs later (same paths).
+- After changing redirect URLs on Vercel, redeploy.
+
 2. Run the development server:
 ```bash
 npm run dev

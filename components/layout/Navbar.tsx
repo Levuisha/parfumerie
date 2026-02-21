@@ -21,6 +21,7 @@ export function Navbar() {
     { href: "/", label: "Browse" },
     { href: "/shelves", label: "My Shelves", count: ownedCount + wantCount + testedCount },
     { href: "/discover", label: "Discover" },
+    { href: "/people", label: "People" },
   ];
 
   return (

@@ -18,7 +18,11 @@ export async function ensureProfileRow(): Promise<EnsureProfileResult> {
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) {
-    console.warn("[ensureProfileRow] getUser failed:", userError);
+    console.warn("[ensureProfileRow] getUser failed:", {
+      message: userError.message,
+      status: userError.status,
+      name: userError.name,
+    });
     return { ok: false, message: userError.message };
   }
 
@@ -37,8 +41,29 @@ export async function ensureProfileRow(): Promise<EnsureProfileResult> {
     );
 
   if (upsertError) {
-    console.warn("[ensureProfileRow] profiles upsert failed:", upsertError);
+    console.warn("[ensureProfileRow] profiles upsert failed:", {
+      code: upsertError.code,
+      message: upsertError.message,
+      details: upsertError.details,
+      hint: upsertError.hint,
+    });
     return { ok: false, message: upsertError.message };
+  }
+
+  const { error: selectError } = await supabase
+    .from("profiles")
+    .select("id, username, avatar_url, signature_fragrance_id, bio")
+    .eq("id", user.id)
+    .single();
+
+  if (selectError) {
+    console.warn("[ensureProfileRow] profiles select failed:", {
+      code: selectError.code,
+      message: selectError.message,
+      details: selectError.details,
+      hint: selectError.hint,
+    });
+    return { ok: false, message: selectError.message };
   }
 
   return { ok: true, userId: user.id };

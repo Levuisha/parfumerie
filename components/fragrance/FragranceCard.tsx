@@ -12,11 +12,20 @@ interface FragranceCardProps {
   fragrance: Fragrance;
   showUserRating?: boolean;
   onRemove?: () => void;
+  detailQuery?: string;
 }
 
-export function FragranceCard({ fragrance, showUserRating = false, onRemove }: FragranceCardProps) {
+export function FragranceCard({
+  fragrance,
+  showUserRating = false,
+  onRemove,
+  detailQuery,
+}: FragranceCardProps) {
+  const detailHref = detailQuery
+    ? `/fragrance/${fragrance.id}?${detailQuery}`
+    : `/fragrance/${fragrance.id}`;
   return (
-    <Link href={`/fragrance/${fragrance.id}`}>
+    <Link href={detailHref}>
       <Card className="group relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_rgba(255,107,53,0.2)] hover:border-[#ff6b35] cursor-pointer border-[#2a2a2a]">
         <div className="relative aspect-square w-full overflow-hidden bg-[#1a1a1a]">
           <Image
@@ -33,6 +42,12 @@ export function FragranceCard({ fragrance, showUserRating = false, onRemove }: F
           <div>
             <h3 className="font-semibold text-white line-clamp-1">{fragrance.name}</h3>
             <p className="text-sm text-[#ff6b35]">{fragrance.brand}</p>
+            {(fragrance.year || fragrance.concentration) && (
+              <p className="text-xs text-[#a0a0a0]">
+                {fragrance.year ? fragrance.year : "Year N/A"}
+                {fragrance.concentration ? ` • ${fragrance.concentration}` : ""}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2">

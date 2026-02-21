@@ -45,6 +45,8 @@ export function AuthButton({ className }: AuthButtonProps) {
           if (!res.ok) {
             console.warn("[AuthButton] ensureProfileRow failed:", res.message);
             setWarningMessage("Profile sync failed (check console).");
+          } else {
+            setWarningMessage(null);
           }
         });
       }
@@ -65,6 +67,8 @@ export function AuthButton({ className }: AuthButtonProps) {
             if (!res.ok) {
               console.warn("[AuthButton] ensureProfileRow failed:", res.message);
               setWarningMessage("Profile sync failed (check console).");
+            } else {
+              setWarningMessage(null);
             }
           });
         }

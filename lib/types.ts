@@ -3,6 +3,7 @@ export interface Fragrance {
   name: string;
   brand: string;
   year: number;
+  concentration?: string | null;
   gender: "Male" | "Female" | "Unisex";
   description: string;
   image: string;

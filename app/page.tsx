@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SearchBar } from "@/components/filters/SearchBar";
 import { FilterSidebar, FilterState } from "@/components/filters/FilterSidebar";
 import { FragranceGrid } from "@/components/fragrance/FragranceGrid";
@@ -8,7 +9,11 @@ import { useFragrance } from "@/context/FragranceContext";
 import { Fragrance } from "@/lib/types";
 
 export default function HomePage() {
-  const { fragrances } = useFragrance();
+  const { fragrances, catalogLoading, catalogError, brandOptions } = useFragrance();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const initializedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<FilterState>({
     gender: [],
@@ -19,9 +24,57 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState("most-popular");
   const [showFilters, setShowFilters] = useState(false);
 
+  const parseList = (value: string | null) => {
+    if (!value) return [];
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  };
+
+  const buildQueryParams = () => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("q", searchQuery);
+    if (sortBy && sortBy !== "most-popular") params.set("sort", sortBy);
+    if (filters.gender.length > 0) params.set("gender", filters.gender.join(","));
+    if (filters.season.length > 0) params.set("season", filters.season.join(","));
+    if (filters.timeOfDay.length > 0) params.set("time", filters.timeOfDay.join(","));
+    if (filters.brands.length > 0) params.set("brands", filters.brands.join(","));
+    return params;
+  };
+
+  useEffect(() => {
+    if (initializedRef.current) return;
+    const initialSearch = searchParams.get("q") ?? "";
+    const initialSort = searchParams.get("sort") ?? "most-popular";
+    const initialFilters: FilterState = {
+      gender: parseList(searchParams.get("gender")),
+      season: parseList(searchParams.get("season")),
+      timeOfDay: parseList(searchParams.get("time")),
+      brands: parseList(searchParams.get("brands")),
+    };
+    setSearchQuery(initialSearch);
+    setSortBy(initialSort);
+    setFilters(initialFilters);
+    initializedRef.current = true;
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    const params = buildQueryParams();
+    const next = params.toString();
+    const current = searchParams.toString();
+    if (next !== current) {
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }
+  }, [filters, pathname, router, searchParams, searchQuery, sortBy]);
+
   const availableBrands = useMemo(() => {
+    if (brandOptions.length > 0) return brandOptions;
     return [...new Set(fragrances.map((f) => f.brand))].sort();
-  }, [fragrances]);
+  }, [brandOptions, fragrances]);
+
+  const detailQuery = useMemo(() => {
+    const params = buildQueryParams();
+    return params.toString();
+  }, [filters, searchQuery, sortBy]);
 
   // Filter fragrances
   const filteredFragrances = useMemo(() => {
@@ -43,7 +96,7 @@ export default function HomePage() {
       // Season filter
       if (filters.season.length > 0) {
         const hasMatchingSeason = filters.season.some((s) =>
-          fragrance.season.includes(s)
+          (fragrance.season ?? []).includes(s)
         );
         if (!hasMatchingSeason) return false;
       }
@@ -51,7 +104,7 @@ export default function HomePage() {
       // Time of Day filter
       if (filters.timeOfDay.length > 0) {
         const hasMatchingTime = filters.timeOfDay.some((t) =>
-          fragrance.timeOfDay.includes(t)
+          (fragrance.timeOfDay ?? []).includes(t)
         );
         if (!hasMatchingTime) return false;
       }
@@ -83,6 +136,24 @@ export default function HomePage() {
     }
   }, [filteredFragrances, sortBy]);
 
+  if (catalogLoading) {
+    return (
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-3xl font-bold text-white mb-2">Browse Fragrances</h1>
+        <p className="text-sm text-[#a0a0a0]">Loading fragrances...</p>
+      </div>
+    );
+  }
+
+  if (catalogError) {
+    return (
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-3xl font-bold text-white mb-2">Browse Fragrances</h1>
+        <p className="text-sm text-red-400">Failed to load fragrances: {catalogError}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
@@ -95,7 +166,7 @@ export default function HomePage() {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Filters Sidebar */}
         <aside className="lg:w-64 flex-shrink-0">
-          <div className="lg:sticky lg:top-24">
+          <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-2">
             <div className="lg:hidden mb-4">
               <button
                 onClick={() => setShowFilters(!showFilters)}
@@ -124,7 +195,7 @@ export default function HomePage() {
           <div className="mb-4 text-sm text-[#a0a0a0]">
             Showing {filteredFragrances.length} of {fragrances.length} fragrances
           </div>
-          <FragranceGrid fragrances={sortedFragrances} />
+          <FragranceGrid fragrances={sortedFragrances} detailQuery={detailQuery} />
         </div>
       </div>
     </div>
