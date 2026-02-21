@@ -49,7 +49,8 @@ export async function fetchFragrances(): Promise<{
   }
 
   const rows = (data ?? []).map((row) => {
-    const brand = (row as { brands?: BrandRow | null }).brands ?? null;
+    const joinedBrand = (row as { brands?: BrandRow | BrandRow[] | null }).brands;
+    const brand = Array.isArray(joinedBrand) ? joinedBrand[0] ?? null : joinedBrand ?? null;
     return {
       ...(row as FragranceRow),
       brand,

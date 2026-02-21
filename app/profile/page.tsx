@@ -37,16 +37,19 @@ export default function ProfilePage() {
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const { supabase } = getSupabaseClient();
-    if (!supabase) {
+    const client = getSupabaseClient();
+    if (!client.supabase) {
       setProfileState({ state: "logged_out" });
       return;
     }
-
+  
+    const supabase = client.supabase;
+  
     let isMounted = true;
-
+  
     async function loadProfile() {
       setLoadingMessage("Loading profile...");
+  
       const { data: userData, error } = await supabase.auth.getUser();
       if (error || !userData.user) {
         if (!isMounted) return;
@@ -54,17 +57,17 @@ export default function ProfilePage() {
         setLoadingMessage(null);
         return;
       }
-
+  
       const userId = userData.user.id;
       const email = userData.user.email ?? null;
       setProfileState({ state: "logged_in", userId, email });
-
+  
       const ensureResult = await ensureProfileRow();
       if (!ensureResult.ok) {
         if (!isMounted) return;
         setErrorMessage(`Profile sync failed: ${ensureResult.message}`);
       }
-
+  
       const profileResult = await fetchProfile(userId);
       if (!isMounted) return;
       if (profileResult.error) {
@@ -78,24 +81,23 @@ export default function ProfilePage() {
           avatarUrl: profileResult.data.avatar_url ?? null,
         });
       }
-
+  
       const ownedResult = await fetchOwnedFragranceOptions(userId);
       if (ownedResult.error) {
         setErrorMessage((prev) => prev ?? `Owned fragrances load failed: ${ownedResult.error}`);
       } else {
         setOwnedOptions(ownedResult.data);
       }
-
+  
       setLoadingMessage(null);
     }
-
+  
     loadProfile();
-
+  
     return () => {
       isMounted = false;
     };
   }, []);
-
   const initials = useMemo(() => {
     const source = form.username || (profileState.state === "logged_in" ? profileState.email ?? "" : "");
     const letters = source

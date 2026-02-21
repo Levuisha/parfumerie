@@ -70,12 +70,13 @@ export default function PublicProfilePage() {
       setLoading(true);
       setErrorMessage(null);
 
-      const { supabase, error } = getSupabaseClient();
-      if (!supabase) {
-        setErrorMessage(error ?? "Supabase is not configured.");
+      const client = getSupabaseClient();
+      if (!client.supabase) {
+        setErrorMessage(client.error ?? "Supabase is not configured.");
         setLoading(false);
         return;
       }
+      const supabase = client.supabase;
 
       const { data: userData } = await supabase.auth.getUser();
       if (!cancelled) {
@@ -149,7 +150,7 @@ export default function PublicProfilePage() {
               fragranceMap.set(id, {
                 id,
                 name: row.name as string,
-                brand: row.brands?.name ?? "Unknown",
+                brand: (row.brands?.[0]?.name ?? "Unknown"),
                 image: row.image_url ?? null,
                 year: row.year ?? null,
                 concentration: row.concentration ?? null,

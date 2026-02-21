@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { SearchBar } from "@/components/filters/SearchBar";
 import { FilterSidebar, FilterState } from "@/components/filters/FilterSidebar";
 import { FragranceGrid } from "@/components/fragrance/FragranceGrid";
@@ -12,7 +12,6 @@ export default function HomePage() {
   const { fragrances, catalogLoading, catalogError, brandOptions } = useFragrance();
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const initializedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<FilterState>({
@@ -42,29 +41,36 @@ export default function HomePage() {
 
   useEffect(() => {
     if (initializedRef.current) return;
-    const initialSearch = searchParams.get("q") ?? "";
-    const initialSort = searchParams.get("sort") ?? "most-popular";
+    const params =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : new URLSearchParams();
+    const initialSearch = params.get("q") ?? "";
+    const initialSort = params.get("sort") ?? "most-popular";
     const initialFilters: FilterState = {
-      gender: parseList(searchParams.get("gender")),
-      season: parseList(searchParams.get("season")),
-      timeOfDay: parseList(searchParams.get("time")),
-      brands: parseList(searchParams.get("brands")),
+      gender: parseList(params.get("gender")),
+      season: parseList(params.get("season")),
+      timeOfDay: parseList(params.get("time")),
+      brands: parseList(params.get("brands")),
     };
     setSearchQuery(initialSearch);
     setSortBy(initialSort);
     setFilters(initialFilters);
     initializedRef.current = true;
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     if (!initializedRef.current) return;
     const params = buildQueryParams();
     const next = params.toString();
-    const current = searchParams.toString();
+    const current =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).toString()
+        : "";
     if (next !== current) {
       router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
     }
-  }, [filters, pathname, router, searchParams, searchQuery, sortBy]);
+  }, [filters, pathname, router, searchQuery, sortBy]);
 
   const availableBrands = useMemo(() => {
     if (brandOptions.length > 0) return brandOptions;

@@ -25,11 +25,12 @@ type CatalogRow = {
   concentration: string | null;
   gender: string | null;
   description: string | null;
-  brand: CatalogBrand | null;
+  brand: CatalogBrand | CatalogBrand[] | null;
 };
 
 function normalizeCatalogRow(row: CatalogRow): CatalogFragrance {
-  const brand = row.brand ?? { id: 0, name: "Unknown", logo_url: null };
+  const joinedBrand = Array.isArray(row.brand) ? row.brand[0] : row.brand;
+  const brand = joinedBrand ?? { id: 0, name: "Unknown", logo_url: null };
   return {
     id: Number(row.id),
     name: row.name,

@@ -38,7 +38,7 @@ export async function fetchReviewsForFragrance(
     return { ok: false, data: [], error: queryError.message };
   }
 
-  return { ok: true, data: (data ?? []) as ReviewRow[] };
+  return { ok: true, data: (data ?? []) as unknown as ReviewRow[] };
 }
 
 export async function fetchMyReview(fragranceId: number): Promise<{
